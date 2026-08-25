@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7fb">
+  <title>PUID Validator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f6f7fb;
+      --surface: rgba(255, 255, 255, 0.88);
+      --ink: #18201d;
+      --muted: #68736e;
+      --line: #dfe5e1;
+      --accent: #16875f;
+      --accent-soft: #e8f6ef;
+      --danger: #c2413a;
+      --danger-soft: #fff0ee;
+      --focus: rgba(22, 135, 95, 0.2);
+      --shadow: 0 24px 70px rgba(28, 42, 36, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 10%, rgba(22, 135, 95, 0.09), transparent 32rem),
+        radial-gradient(circle at 88% 90%, rgba(44, 92, 174, 0.08), transparent 34rem),
+        var(--page);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .card {
+      width: min(100%, 620px);
+      padding: clamp(28px, 6vw, 48px);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 28px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 3.35rem);
+      line-height: 1;
+      letter-spacing: -0.055em;
+    }
+
+    .intro {
+      margin: 18px 0 30px;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.65;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 9px;
+      font-size: 0.86rem;
+      font-weight: 750;
+    }
+
+    .input-wrap,
+    .suggestion-value {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+
+    input,
+    .suggested-puid {
+      min-width: 0;
+      flex: 1;
+      border: 0;
+      outline: 0;
+      color: var(--ink);
+      background: transparent;
+      font: 650 clamp(1rem, 4vw, 1.2rem)/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      letter-spacing: 0.045em;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px 4px 16px 17px;
+    }
+
+    input::placeholder { color: #a6afaa; }
+
+    .copy-button {
+      position: relative;
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      margin-right: 5px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 10px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      transition: color 150ms ease, background 150ms ease, transform 100ms ease;
+    }
+
+    .copy-button:hover { color: var(--ink); background: #f0f3f1; }
+    .copy-button:active { transform: scale(0.94); }
+    .copy-button:focus-visible { outline: 3px solid var(--focus); }
+    .copy-button:disabled { opacity: 0.35; cursor: default; }
+    .copy-button svg { width: 19px; height: 19px; }
+
+    .copy-button::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + 8px);
+      padding: 6px 8px;
+      border-radius: 7px;
+      color: #fff;
+      background: var(--ink);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(3px);
+      transition: opacity 120ms ease, transform 120ms ease;
+      white-space: nowrap;
+    }
+
+    .copy-button.show-tooltip::after { opacity: 1; transform: translateY(0); }
+
+    .status {
+      min-height: 28px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: #aeb7b2;
+    }
+
+    .status.valid { color: var(--accent); }
+    .status.valid .status-dot { background: var(--accent); box-shadow: 0 0 0 5px var(--accent-soft); }
+    .status.invalid { color: var(--danger); }
+    .status.invalid .status-dot { background: var(--danger); box-shadow: 0 0 0 5px var(--danger-soft); }
+
+    .suggestion {
+      display: none;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .suggestion.visible { display: block; animation: rise 180ms ease-out; }
+
+    .suggestion-label {
+      margin: 0 0 9px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 750;
+    }
+
+    .suggestion-value {
+      border-color: #c9e7d9;
+      background: var(--accent-soft);
+    }
+
+    .suggested-puid { padding: 14px 4px 14px 17px; color: #106847; }
+
+    .rules {
+      margin: 30px 0 0;
+      padding: 18px 0 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.65;
+    }
+
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--ink); }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 14px; }
+      .card { padding: 28px 20px; border-radius: 22px; }
+      input, .suggested-puid { font-size: 0.98rem; letter-spacing: 0.025em; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">Public unique identifier</p>
+    <h1>PUID Validator</h1>
+    <p class="intro">Check whether a value matches the 16-character PUID format. Everything happens locally in your browser.</p>
+
+    <label for="puid">PUID</label>
+    <div class="input-wrap">
+      <input id="puid" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="64" placeholder="e.g. 7N4XQ2K9M8R3W5TZ" aria-describedby="status">
+      <button class="copy-button" id="copy-input" type="button" aria-label="Copy entered PUID" data-tooltip="Copied" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="status" id="status" role="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="status-text">Enter a PUID to validate it.</span>
+    </div>
+
+    <section class="suggestion" id="suggestion" aria-label="Suggested correction">
+      <p class="suggestion-label">Did you mean?</p>
+      <div class="suggestion-value">
+        <span class="suggested-puid" id="suggested-puid"></span>
+        <button class="copy-button" id="copy-suggestion" type="button" aria-label="Copy suggested PUID" data-tooltip="Copied">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+            <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <p class="rules">Valid PUIDs contain exactly <strong>16 characters</strong> from <code>0–9</code> and <code>A–Z</code>, excluding <code>I</code> and <code>O</code>.</p>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const VALID_PATTERN = /^[0-9A-HJ-NP-Z]{16}$/;
+      const input = document.getElementById('puid');
+      const status = document.getElementById('status');
+      const statusText = document.getElementById('status-text');
+      const suggestion = document.getElementById('suggestion');
+      const suggestedPuid = document.getElementById('suggested-puid');
+      const copyInput = document.getElementById('copy-input');
+      const copySuggestion = document.getElementById('copy-suggestion');
+
+      function getSuggestion(value) {
+        const repaired = value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]/g, '')
+          .replace(/O/g, '0')
+          .replace(/I/g, '1');
+
+        return repaired !== value && VALID_PATTERN.test(repaired) ? repaired : null;
+      }
+
+      function validate() {
+        const value = input.value;
+        const isValid = VALID_PATTERN.test(value);
+        const repaired = isValid ? null : getSuggestion(value);
+
+        copyInput.disabled = value.length === 0;
+        status.className = 'status';
+        suggestion.classList.remove('visible');
+
+        if (!value) {
+          statusText.textContent = 'Enter a PUID to validate it.';
+          return;
+        }
+
+        if (isValid) {
+          status.classList.add('valid');
+          statusText.textContent = 'This PUID is valid.';
+          return;
+        }
+
+        status.classList.add('invalid');
+        if (value.length !== 16) {
+          statusText.textContent = `Invalid PUID — ${value.length} of 16 characters.`;
+        } else {
+          statusText.textContent = 'Invalid PUID — check its characters and casing.';
+        }
+
+        if (repaired) {
+          suggestedPuid.textContent = repaired;
+          suggestion.classList.add('visible');
+        }
+      }
+
+      async function copyText(text, button) {
+        if (!text) return;
+
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const helper = document.createElement('textarea');
+          helper.value = text;
+          helper.style.position = 'fixed';
+          helper.style.opacity = '0';
+          document.body.appendChild(helper);
+          helper.select();
+          document.execCommand('copy');
+          helper.remove();
+        }
+
+        button.classList.add('show-tooltip');
+        window.setTimeout(() => button.classList.remove('show-tooltip'), 1200);
+      }
+
+      input.addEventListener('input', validate);
+      copyInput.addEventListener('click', () => copyText(input.value, copyInput));
+      copySuggestion.addEventListener('click', () => copyText(suggestedPuid.textContent, copySuggestion));
+    })();
+  </script>
+</body>
+</html>
